@@ -1,0 +1,11 @@
+<Solution>
+  <Project Path="Application/Application.csproj" />
+  <Project Path="Coddify_Backend/Coddify_Backend.csproj" />
+  <Project Path="CommonOperations/CommonOperations.csproj" Id="a40f8b08-9412-49ee-9ce1-199f0a2f6697" />
+  <Project Path="Database/Database.sqlproj" Id="ef5f6db3-cd74-404e-b8cb-1a290df5a4df">
+    <Build />
+    <Deploy />
+  </Project>
+  <Project Path="Domian/Domian.csproj" />
+  <Project Path="Infrastructure/Infrastructure.csproj" />
+</Solution>
