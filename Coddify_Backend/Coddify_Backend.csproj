@@ -20,6 +20,7 @@
     </PackageReference>
     <!-- Microsoft.OpenApi is provided transitively by Microsoft.AspNetCore.OpenApi; do not reference directly to avoid version mismatch with source generators -->
     <PackageReference Include="Microsoft.SqlServer.Server" Version="1.0.0" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="10.2.3" />
   </ItemGroup>
 
   <ItemGroup>

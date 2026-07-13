@@ -20,6 +20,9 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
+// Swagger (Swashbuckle) setup for interactive API documentation
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
 
 
 var app = builder.Build();
@@ -28,6 +31,13 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+    // Enable Swagger middleware in development for interactive UI
+    app.UseSwagger();
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Coddify API V1");
+        c.RoutePrefix = string.Empty; // Serve the UI at application's root (https://localhost:<port>/)
+    });
 }
 
 app.UseHttpsRedirection();
