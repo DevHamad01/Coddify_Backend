@@ -1,11 +1,14 @@
 using Microsoft.EntityFrameworkCore;
 using Infrastructure.Context;
+using Application.Interfaces.AppUsers;
+using Infrastructure.Services.Auth.AppUsers;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 
 builder.Services.AddControllers();
+builder.Services.AddScoped<IUserAuthentication, AuthenticationUserService>();
 
 builder.Services.AddDbContext<AppDbContext>(options =>
    options.UseSqlServer(
