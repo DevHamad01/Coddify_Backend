@@ -4,6 +4,9 @@ using Application.Interfaces.Common;
 using Application.Interfaces.Gamification;
 using Application.Interfaces.Learning;
 using Application.Interfaces.Onboarding;
+using Application.Interfaces.Practice;
+using Infrastructure.Services.Practice;
+using Infrastructure.Services.Social;
 using Coddify_Backend.Hubs;
 using Infrastructure.Context;
 using Infrastructure.Seed;
@@ -46,6 +49,14 @@ namespace Coddify_Backend.InjectedServices
             services.AddScoped<IRewardService, RewardService>();
             services.AddScoped<IGamificationService, GamificationService>();
             services.AddScoped<ILearningService, LearningService>();
+            services.AddScoped<IStoreService, StoreService>();
+            services.AddScoped<ILeaderboardService, LeaderboardService>();
+            services.AddScoped<IProfileService, ProfileService>();
+            services.AddScoped<ISocialService, SocialService>();
+
+            // Practice (TemporaryProblemJudge is swapped for Judge0 once it is hosted)
+            services.AddSingleton<IProblemJudge, TemporaryProblemJudge>();
+            services.AddScoped<IPracticeService, PracticeService>();
 
             return services;
         }
