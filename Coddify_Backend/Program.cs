@@ -1,3 +1,4 @@
+using Coddify_Backend.Hubs;
 using Coddify_Backend.InjectedServices;
 using Coddify_Backend.Middlewares;
 
@@ -7,6 +8,8 @@ builder.Services.AddApiServices(builder.Configuration);
 builder.Services.AddInfrastructureServices(builder.Configuration);
 
 var app = builder.Build();
+
+await app.InitialiseDatabaseAsync();
 
 app.UseMiddleware<ExceptionMiddleware>();
 
@@ -28,5 +31,6 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapHub<LiveHub>(LiveHub.Path);
 
 app.Run();
