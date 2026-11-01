@@ -1,50 +1,30 @@
-using Microsoft.EntityFrameworkCore;
-using Infrastructure.Context;
-using Application.Interfaces.AppUsers;
-using Infrastructure.Services.Auth.AppUsers;
+using Coddify_Backend.InjectedServices;
+using Coddify_Backend.Middlewares;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-
-builder.Services.AddControllers();
-builder.Services.AddScoped<IUserAuthentication, AuthenticationUserService>();
-
-builder.Services.AddDbContext<AppDbContext>(options =>
-   options.UseSqlServer(
-       builder.Configuration.GetConnectionString("ConnectionString"),
-       sqlOptions =>
-       {
-           sqlOptions.EnableRetryOnFailure(
-               maxRetryCount: 5,
-               maxRetryDelay: TimeSpan.FromSeconds(30),
-               errorNumbersToAdd: null);
-       }));
-
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddOpenApi();
-// Swagger (Swashbuckle) setup for interactive API documentation
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
-
+builder.Services.AddApiServices(builder.Configuration);
+builder.Services.AddInfrastructureServices(builder.Configuration);
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+app.UseMiddleware<ExceptionMiddleware>();
+
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi();
-    // Enable Swagger middleware in development for interactive UI
+    // Swagger UI at the site root, e.g. https://localhost:7202/
     app.UseSwagger();
     app.UseSwaggerUI(c =>
     {
         c.SwaggerEndpoint("/swagger/v1/swagger.json", "Coddify API V1");
-        c.RoutePrefix = string.Empty; // Serve the UI at application's root (https://localhost:<port>/)
+        c.RoutePrefix = string.Empty;
     });
 }
 
 app.UseHttpsRedirection();
-
+app.UseCors(ApiServiceRegistration.CorsPolicy);
+app.UseRateLimiter();
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();

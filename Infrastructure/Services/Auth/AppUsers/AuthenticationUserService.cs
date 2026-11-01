@@ -1,636 +1,396 @@
-﻿using Application.Interfaces.AppUsers;
+﻿using System.Net;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.RegularExpressions;
+using Application.Interfaces.AppUsers;
 using Application.VMs;
-using Application.VMs.AppUsers.Autentication;
 using Application.VMs.AppUsers.Authentication;
+using CommonOperations.Constants.Common;
 using CommonOperations.Methods;
+using CommonOperations.Security;
 using Domian.Entities.AppUsers;
-using Infrastructure.Context;
-using Infrastructure.Migrations;
-using Microsoft.Extensions.Configuration;
-using System.Net;
-using Microsoft.EntityFrameworkCore;
 using Google.Apis.Auth;
+using Infrastructure.Context;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace Infrastructure.Services.Auth.AppUsers
 {
+    /// <summary>
+    /// Sign-up and sign-in flow (first written by Isra), hardened: email-link tokens are signed and
+    /// validated, passwords use salted PBKDF2, refresh tokens are stored hashed and rotate on use.
+    /// </summary>
     public class AuthenticationUserService : IUserAuthentication
     {
+        private const string VerifyPurpose = "verify";
+        private const string ResetPurpose = "reset";
+        private static readonly TimeSpan VerifyLifetime = TimeSpan.FromHours(24);
+        private static readonly TimeSpan ResetLifetime = TimeSpan.FromHours(1);
+        private static readonly TimeSpan RefreshLifetime = TimeSpan.FromDays(7);
+
         private readonly IConfiguration _config;
         private readonly AppDbContext _context;
+        private readonly ILogger<AuthenticationUserService> _logger;
 
         public AuthenticationUserService(
             IConfiguration config,
-            AppDbContext context)
+            AppDbContext context,
+            ILogger<AuthenticationUserService> logger)
         {
             _config = config;
             _context = context;
+            _logger = logger;
         }
 
-        public ResponseVM CreateUser(UserVM user)
+        public async Task<ResponseVM> RegisterAsync(RegisterVM model)
         {
-            ResponseVM response = ResponseVM.Instance;
-
-            var existingUser = _context.AppUsers
-                .FirstOrDefault(x =>
-                    (x.Email == user.Email ||
-                     x.UserName == user.UserName) &&
-                     !x.IsDeleted);
-
-            if (existingUser != null)
+            var email = NormaliseEmail(model.Email);
+            if (await _context.AppUsers.AnyAsync(x => x.Email == email && !x.IsDeleted))
             {
-                response.responseCode = 400;
-                response.responseMessage = "User already exists";
-                return response;
+                return ResponseVM.Fail(409, ErrorCodes.EmailTaken, "An account with this email already exists.");
             }
 
-            AppUser newUser = new AppUser
+            var user = new AppUser
             {
-                Email = user.Email,
-                UserName = user.UserName,
-                Password = CommonMethods.EncrypthePassword(user.Password),
-                FullName = user.FullName,
-                Gender = user.Gender,
-                DateOfBirth = user.DateOfBirth,
+                Email = email,
+                UserName = await UniqueUsernameAsync(model.FullName, email),
+                Password = PasswordHasher.Hash(model.Password),
+                FullName = model.FullName.Trim(),
+                Role = Roles.Learner,
                 CreatedAt = DateTime.UtcNow
             };
 
-            _context.AppUsers.Add(newUser);
-            _context.SaveChanges();
+            _context.AppUsers.Add(user);
+            await _context.SaveChangesAsync();
+            await SendVerifyEmailAsync(user);
 
-            response.responseCode = 200;
-            response.responseMessage = "User created successfully";
-
-            return response;
+            return ResponseVM.Ok(
+                new RegisterResultVM { Email = user.Email, RequiresVerification = true },
+                "Account created. Check your inbox to verify your email.");
         }
-        public ResponseVM loginUser(LoginUserVM model)
+
+        public async Task<ResponseVM> LoginAsync(LoginVM model)
         {
-            ResponseVM response = ResponseVM.Instance;
+            var email = NormaliseEmail(model.Email);
+            var user = await _context.AppUsers.FirstOrDefaultAsync(x => x.Email == email && !x.IsDeleted);
 
-            var user = _context.AppUsers
-                .FirstOrDefault(x => (x.Email == model.Mail || x.UserName == model.Mail) && !x.IsDeleted);
-
-            if (user == null)
+            // Same message for "no account" and "wrong password" so emails cannot be probed.
+            if (user == null || !PasswordHasher.Verify(model.Password, user.Password, out var needsRehash))
             {
-                response.responseCode = 400;
-                response.responseMessage = "There is no user with this Email or Username, or the account is deleted.";
-                return response;
+                return ResponseVM.Fail(401, ErrorCodes.InvalidCredentials, "Wrong email or password.");
+            }
+
+            if (user.IsBlocked)
+            {
+                return ResponseVM.Fail(403, ErrorCodes.Blocked, "This account is blocked.");
             }
 
             if (!user.IsEmailVerified)
             {
-                var verifyToken = CommonMethods.GenerateJwtToken(
-                    user.Email,
-                    user.Id,
-                    user.UserName,
-                   
-                    _config
-                );
-
-                SendVerifyEmail(verifyToken, user.Email);
-
-                response.responseCode = 400;
-                response.responseMessage = "Verification email sent. Please verify your account.";
-                return response;
+                return ResponseVM.Fail(403, ErrorCodes.EmailNotVerified, "Please verify your email before logging in.");
             }
 
-            if (user.IsBlocked)
+            if (needsRehash)
             {
-                response.responseCode = 400;
-                response.responseMessage = "Account is Blocked";
-                return response;
+                user.Password = PasswordHasher.Hash(model.Password);
             }
 
-            if (user.Password != CommonMethods.EncrypthePassword(model.Password))
-            {
-                response.responseCode = 400;
-                response.responseMessage = "Invalid password.";
-                return response;
-            }
-
-            var refreshToken = CommonMethods.GenerateRefreshToken();
-            user.RefreshToken = refreshToken;
-            user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7);
-            _context.SaveChanges();
-
-            var loginData = new onLoggedInVM
-            {
-                Id = user.Id,
-                Token = CommonMethods.GenerateJwtToken(user.Email, user.Id, user.UserName, _config),
-                Email = user.Email,
-                UserName = user.UserName,
-                FullName = user.FullName,
-                RefreshToken = refreshToken,
-                Bio = user.Bio,
-                ProfileImageUrl = CommonMethods.GetFileUrl(user.ProfileImageUrl)
-            };
-
-            response.data = loginData;
-            response.responseCode = 200;
-            response.responseMessage = "Login successful.";
-
-            return response;
-
+            return ResponseVM.Ok(await StartSessionAsync(user), "Login successful.");
         }
-        public async Task<ResponseVM> LoginWithGoogle(string idToken)
-        {
-            ResponseVM response = ResponseVM.Instance;
 
+        public async Task<ResponseVM> LoginWithGoogleAsync(GoogleLoginVM model)
+        {
+            var clientId = _config["Google:ClientId"] ?? _config["Google:Client_id"];
+            if (string.IsNullOrWhiteSpace(clientId))
+            {
+                return ResponseVM.Fail(501, ErrorCodes.GoogleNotConfigured, "Google sign-in is not configured.");
+            }
+
+            GoogleJsonWebSignature.Payload payload;
             try
             {
-                var setting = new GoogleJsonWebSignature.ValidationSettings
+                payload = await GoogleJsonWebSignature.ValidateAsync(
+                    model.IdToken,
+                    new GoogleJsonWebSignature.ValidationSettings { Audience = new[] { clientId } });
+            }
+            catch (InvalidJwtException)
+            {
+                return ResponseVM.Fail(401, ErrorCodes.InvalidToken, "Google sign-in failed. Please try again.");
+            }
+
+            var email = NormaliseEmail(payload.Email);
+            var user = await _context.AppUsers.FirstOrDefaultAsync(u => u.Email == email && !u.IsDeleted);
+
+            if (user is { IsBlocked: true })
+            {
+                return ResponseVM.Fail(403, ErrorCodes.Blocked, "This account is blocked.");
+            }
+
+            if (user == null)
+            {
+                user = new AppUser
                 {
-                    Audience = new List<string> { _config["Google:Client_id"] }
+                    FullName = payload.Name ?? email.Split('@')[0],
+                    Email = email,
+                    Password = "",
+                    ProfileImageUrl = payload.Picture ?? "",
+                    IsEmailVerified = true,
+                    UserName = await UniqueUsernameAsync(payload.Name ?? "", email),
+                    Role = Roles.Learner,
+                    CreatedAt = DateTime.UtcNow
                 };
-
-                var res = await GoogleJsonWebSignature.ValidateAsync(idToken, setting);
-
-                if (res == null)
-                {
-                    response.responseCode = 400;
-                    response.responseMessage = "UnVerified by Google";
-                    return response;
-                }
-
-                var user = await _context.AppUsers.FirstOrDefaultAsync(u => u.Email == res.Email && !u.IsDeleted);
-
-                if (user != null && user.IsBlocked)
-                {
-                    response.responseCode = 400;
-                    response.responseMessage = "Account is Blocked";
-                    return response;
-                }
-
-                if (user == null)
-                {
-                    string baseUsername = res.Email.Split('@')[0];
-                    string username = baseUsername;
-                    int counter = 1;
-
-                    while (await _context.AppUsers.AnyAsync(x => x.UserName == username))
-                    {
-                        username = $"{baseUsername}{counter}";
-                        counter++;
-                    }
-
-                    var newUser = new AppUser
-                    {
-                        FullName = res.Name,
-                        Email = res.Email,
-                        Password = "",
-                        ProfileImageUrl = res.Picture,
-                        IsEmailVerified = true,
-                        UserName = username,
-                        Bio = "",
-                        RefreshToken = CommonMethods.GenerateRefreshToken(),
-                        RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7),
-                        CreatedAt = DateTime.Now
-                    };
-
-                    _context.AppUsers.Add(newUser);
-                    await _context.SaveChangesAsync();
-
-                    user = newUser;
-                }
-                else
-                {
-                    user.RefreshToken = CommonMethods.GenerateRefreshToken();
-                    user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7);
-
-                    _context.AppUsers.Update(user);
-                    await _context.SaveChangesAsync();
-                }
-
-                var loginData = new onLoggedInVM
-                {
-                    Id = user.Id,
-                    Token = CommonMethods.GenerateJwtToken(user.Email, user.Id, user.UserName, _config),
-                    Email = user.Email,
-                    UserName = user.UserName,
-                    FullName = user.FullName,
-                    ProfileImageUrl = CommonMethods.GetFileUrl(user.ProfileImageUrl),
-                    RefreshToken = user.RefreshToken,
-                    Bio = user.Bio
-                };
-
-                response.responseCode = 200;
-                response.responseMessage = "Login successful";
-                response.data = loginData;
-
-                return response;
+                _context.AppUsers.Add(user);
             }
-            catch (Google.Apis.Auth.InvalidJwtException)
+            else if (!user.IsEmailVerified)
             {
-                response.responseCode = 400;
-                response.responseMessage = "Invalid Google ID Token";
-                return response;
+                // Google has already proven the address belongs to this person.
+                user.IsEmailVerified = true;
             }
-            catch (Exception ex)
-            {
-                response.responseCode = 500;
-                response.responseMessage = ex.Message;
-                return response;
-            }
+
+            return ResponseVM.Ok(await StartSessionAsync(user), "Login successful.");
         }
 
-
-
-
-
-
-        public ResponseVM VerifyUser(string token)
+        public async Task<ResponseVM> VerifyEmailAsync(VerifyEmailVM model)
         {
-            ResponseVM response = ResponseVM.Instance;
-
-            var email = CommonMethods.ExtractClaimFromToken(token, "Email");
-
-            if (string.IsNullOrEmpty(email))
+            var user = await FindByTokenAsync(model.Token, model.Email, VerifyPurpose);
+            if (user.Error != null)
             {
-                response.responseCode = 400;
-                response.responseMessage = "Invalid token";
-                return response;
+                return user.Error;
             }
 
-            var user = _context.AppUsers.FirstOrDefault(x =>
-                x.Email == email &&
-                !x.IsDeleted
-            );
-
-            if (user == null)
+            if (!user.User!.IsEmailVerified)
             {
-                response.responseCode = 404;
-                response.responseMessage = "User not found";
-                return response;
+                user.User.IsEmailVerified = true;
+                user.User.UpdatedAt = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
             }
 
-            if (user.IsEmailVerified)
-            {
-                response.responseCode = 400;
-                response.responseMessage = "User already verified";
-                return response;
-            }
-
-            user.IsEmailVerified = true;
-            _context.AppUsers.Update(user);
-            _context.SaveChanges();
-
-            var refreshToken = CommonMethods.GenerateRefreshToken();
-            user.RefreshToken = refreshToken;
-            user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7);
-            _context.SaveChanges();
-
-            var loginData = new onLoggedInVM
-            {
-                Id = user.Id,
-                Token = CommonMethods.GenerateJwtToken(user.Email, user.Id, user.UserName, _config),
-                Email = user.Email,
-                UserName = user.UserName,
-                FullName = user.FullName,
-                RefreshToken = refreshToken,
-                Bio = user.Bio,
-                ProfileImageUrl = CommonMethods.GetFileUrl(user.ProfileImageUrl)
-            };
-
-            response.responseCode = 200;
-            response.responseMessage = "Email verified successfully";
-            response.data = loginData;
-
-            return response;
-        }
-        public ResponseVM ResendVerificationEmail(string email)
-        {
-            ResponseVM response = ResponseVM.Instance;
-
-            var user = _context.AppUsers.FirstOrDefault(x =>
-                x.Email == email &&
-                !x.IsDeleted
-            );
-
-            if (user == null)
-            {
-                response.responseCode = 404;
-                response.responseMessage = "User not found";
-                return response;
-            }
-
-            if (user.IsEmailVerified)
-            {
-                response.responseCode = 400;
-                response.responseMessage = "User already verified";
-                return response;
-            }
-
-            var verifyToken = CommonMethods.GenerateJwtToken(
-                user.Email,
-                user.Id,
-                user.UserName,
-                _config
-            );
-
-           SendVerifyEmail(verifyToken, user.Email);
-
-            response.responseCode = 200;
-            response.responseMessage = "Verification email sent successfully";
-
-           return response;
+            return ResponseVM.Ok(new MessageVM("Email verified. You can log in now."), "Email verified.");
         }
 
-        public ResponseVM ChangeUserPassword(ChangeUserPassowrdVM model)
+        public async Task<ResponseVM> ResendVerificationAsync(EmailVM model)
         {
-            ResponseVM response = ResponseVM.Instance;
+            var email = NormaliseEmail(model.Email);
+            var user = await _context.AppUsers.FirstOrDefaultAsync(x => x.Email == email && !x.IsDeleted);
 
-            if (model.NewPassword != model.ConfirmPassword)
+            // Answer the same way whether or not the account exists.
+            if (user != null && !user.IsEmailVerified && !user.IsBlocked)
             {
-                response.responseCode = 400;
-                response.responseMessage = "New password and confirmation password do not match.";
-                return response;
+                await SendVerifyEmailAsync(user);
             }
 
-            var user = _context.AppUsers.FirstOrDefault(x => x.Id == model.UserID);
-
-            if (user == null)
-            {
-                response.responseCode = 400;
-                response.responseMessage = "User not found.";
-                return response;
-            }
-
-            if (!string.IsNullOrEmpty(user.Password))
-            {
-                if (user.Password != CommonMethods.EncrypthePassword(model.OldPassword))
-                {
-                    response.responseCode = 400;
-                    response.responseMessage = "Invalid old password.";
-                    return response;
-                }
-            }
-
-            user.Password = CommonMethods.EncrypthePassword(model.NewPassword);
-            _context.SaveChanges();
-
-            response.responseCode = 200;
-            response.responseMessage = "Password changed successfully.";
-            return response;
+            return ResponseVM.Ok(
+                new RegisterResultVM { Email = email, RequiresVerification = true },
+                "If that account needs verifying, a new email is on its way.");
         }
 
-        public ResponseVM ResetUserPassword(string resetToken, string password)
+        public async Task<ResponseVM> ForgotPasswordAsync(EmailVM model)
         {
-            ResponseVM response = ResponseVM.Instance;
+            var email = NormaliseEmail(model.Email);
+            var user = await _context.AppUsers.FirstOrDefaultAsync(x => x.Email == email && !x.IsDeleted);
 
-            var email = CommonMethods.ExtractClaimFromToken(resetToken, "Email");
-            if (email == null)
+            if (user != null && !user.IsBlocked)
             {
-                response.responseCode = 400;
-                response.responseMessage = "Invalid or expired reset token";
-                return response;
+                await SendResetEmailAsync(user);
             }
 
-            var user = _context.AppUsers.FirstOrDefault(x => x.Email == email && !x.IsDeleted);
-            if (user == null)
-            {
-                response.responseCode = 400;
-                response.responseMessage = "There is no user with this Email";
-                return response;
-            }
-
-            if (string.IsNullOrEmpty(user.Password))
-            {
-                response.responseCode = 400;
-                response.responseMessage = "No Password set for this account";
-                return response;
-            }
-
-            user.Password = CommonMethods.EncrypthePassword(password);
-            _context.SaveChanges();
-
-            response.responseCode = 200;
-            response.responseMessage = "Password updated successfully";
-            return response;
+            return ResponseVM.Ok(
+                new MessageVM("If an account exists for that email, a reset link is on its way."),
+                "Reset email sent.");
         }
-        public ResponseVM ForgetUserPassword(string email)
+
+        public async Task<ResponseVM> ResetPasswordAsync(ResetPasswordVM model)
         {
-            ResponseVM response = ResponseVM.Instance;
-
-            var existingMail = _context.AppUsers.FirstOrDefault(e => e.Email == email && !e.IsDeleted);
-
-            if (existingMail == null)
+            var found = await FindByTokenAsync(model.Token, model.Email, ResetPurpose);
+            if (found.Error != null)
             {
-                response.responseCode = 400;
-                response.errorMessage = "No User Found with this Email";
-                return response;
+                return found.Error;
             }
 
-            if (existingMail.IsBlocked)
-            {
-                response.responseCode = 400;
-                response.responseMessage = "Your account is blocked";
-                return response;
-            }
-
-            var resetToken = CommonMethods.GenerateJwtToken(existingMail.Email, existingMail.Id, existingMail.UserName, _config);
-
-            SendResendVerifyEmail(resetToken, existingMail.Email);
-
-            response.responseCode = 200;
-            response.responseMessage = "Password reset Email sent successfully";
-
-            return response;
-        }
-        public ResponseVM UnBlockUser(long id)
-        {
-            ResponseVM response = ResponseVM.Instance;
-
-            var user = _context.AppUsers.FirstOrDefault(x => x.Id == id && !x.IsDeleted);
-
-            if (user == null)
-            {
-                response.responseCode = 404;
-                response.responseMessage = "User not found";
-                return response;
-            }
-
-            if (!user.IsBlocked)
-            {
-                response.responseCode = 400;
-                response.responseMessage = "User is already unblocked";
-                return response;
-            }
-
-            user.IsBlocked = false;
-            user.BlockedReason = "";
+            var user = found.User!;
+            user.Password = PasswordHasher.Hash(model.NewPassword);
+            // Signing in again everywhere is safer after a reset.
+            user.RefreshToken = null;
+            user.RefreshTokenExpiryTime = null;
             user.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
 
-            _context.SaveChanges();
-
-            response.responseCode = 200;
-            response.responseMessage = "User unblocked successfully";
-
-            return response;
+            return ResponseVM.Ok(new MessageVM("Password updated. Log in with your new password."), "Password updated.");
         }
-        public ResponseVM DeleteUser(long id)
+
+        public async Task<ResponseVM> ChangePasswordAsync(long userId, ChangePasswordVM model)
         {
-            ResponseVM response = ResponseVM.Instance;
-
-            var user = _context.AppUsers.FirstOrDefault(x => x.Id == id && !x.IsDeleted);
-
+            var user = await _context.AppUsers.FirstOrDefaultAsync(x => x.Id == userId && !x.IsDeleted);
             if (user == null)
             {
-                response.responseCode = 404;
-                response.responseMessage = "User not found";
-                return response;
+                return ResponseVM.NotFound("User not found.", ErrorCodes.UserNotFound);
             }
 
-            user.IsDeleted = true;
-            user.UpdatedAt = DateTime.UtcNow;
-
-            _context.SaveChanges();
-
-            response.responseCode = 200;
-            response.responseMessage = "User deleted successfully";
-
-            return response;
-        }
-        public ResponseVM BlockUser(DeclineUserVM model)
-        {
-            ResponseVM response = ResponseVM.Instance;
-
-            var user = _context.AppUsers.FirstOrDefault(x => x.Id == model.Id && !x.IsDeleted);
-
-            if (user == null)
+            // Google accounts may not have a password yet; everyone else must prove the old one.
+            if (!string.IsNullOrEmpty(user.Password) && !PasswordHasher.Verify(model.OldPassword, user.Password, out _))
             {
-                response.responseCode = 404;
-                response.responseMessage = "User not found";
-                return response;
+                return ResponseVM.BadRequest(ErrorCodes.InvalidCredentials, "Your current password is wrong.");
+            }
+
+            user.Password = PasswordHasher.Hash(model.NewPassword);
+            user.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+
+            return ResponseVM.Ok(new MessageVM("Password changed."), "Password changed.");
+        }
+
+        public async Task<ResponseVM> RefreshTokenAsync(RefreshTokenVM model)
+        {
+            var hash = HashRefreshToken(model.RefreshToken);
+            var user = await _context.AppUsers.FirstOrDefaultAsync(x => x.RefreshToken == hash && !x.IsDeleted);
+
+            if (user == null || user.RefreshTokenExpiryTime <= DateTime.UtcNow)
+            {
+                return ResponseVM.Fail(401, ErrorCodes.TokenExpired, "Your session has expired. Please log in again.");
             }
 
             if (user.IsBlocked)
             {
-                response.responseCode = 400;
-                response.responseMessage = "User is already blocked";
-                return response;
+                return ResponseVM.Fail(403, ErrorCodes.Blocked, "This account is blocked.");
             }
 
-            user.IsBlocked = true;
-            user.BlockedReason = model.Reason;
-            user.UpdatedAt = DateTime.UtcNow;
-
-            _context.SaveChanges();
-
-            response.responseCode = 200;
-            response.responseMessage = "User blocked successfully";
-
-            return response;
+            return ResponseVM.Ok(await StartSessionAsync(user), "Token refreshed.");
         }
 
-        public ResponseVM RefreshToken(TokenApiModel tokenApiModel)
+        public async Task<ResponseVM> LogoutAsync(long userId)
         {
-            ResponseVM response = ResponseVM.Instance;
-
-            if (tokenApiModel == null ||
-                string.IsNullOrWhiteSpace(tokenApiModel.AccessToken) ||
-                string.IsNullOrWhiteSpace(tokenApiModel.RefreshToken))
+            var user = await _context.AppUsers.FirstOrDefaultAsync(x => x.Id == userId);
+            if (user != null)
             {
-                response.responseCode = 400;
-                response.responseMessage = "Invalid request.";
-                return response;
+                user.RefreshToken = null;
+                user.RefreshTokenExpiryTime = null;
+                await _context.SaveChangesAsync();
             }
+            return ResponseVM.Ok(new MessageVM("Logged out."), "Logged out.");
+        }
 
-            var principal = CommonMethods.GetPrincipalFromExpiredToken(
-                tokenApiModel.AccessToken,
-                _config
-            );
+        public async Task<ResponseVM> GetCurrentUserAsync(long userId)
+        {
+            var user = await _context.AppUsers.AsNoTracking().FirstOrDefaultAsync(x => x.Id == userId && !x.IsDeleted);
+            return user == null
+                ? ResponseVM.NotFound("User not found.", ErrorCodes.UserNotFound)
+                : ResponseVM.Ok(ToUserVM(user));
+        }
 
+        // ---- helpers ----
+
+        /// <summary>Issues a new access token and rotates the refresh token (saved hashed).</summary>
+        private async Task<AuthSessionVM> StartSessionAsync(AppUser user)
+        {
+            var refreshToken = CommonMethods.GenerateRefreshToken();
+            user.RefreshToken = HashRefreshToken(refreshToken);
+            user.RefreshTokenExpiryTime = DateTime.UtcNow.Add(RefreshLifetime);
+            user.LastSeen = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+
+            return new AuthSessionVM
+            {
+                AccessToken = CommonMethods.GenerateJwtToken(user.Email, user.Id, user.UserName, _config, user.Role),
+                RefreshToken = refreshToken,
+                ExpiresAt = DateTime.UtcNow.AddMinutes(CommonMethods.AccessTokenMinutes(_config)),
+                User = ToUserVM(user)
+            };
+        }
+
+        public static AuthUserVM ToUserVM(AppUser user) => new()
+        {
+            Id = user.Id.ToString(),
+            FullName = user.FullName,
+            Email = user.Email,
+            Username = user.UserName,
+            Role = user.Role,
+            EmailVerified = user.IsEmailVerified,
+            OnboardingCompleted = user.OnboardingCompleted,
+            AvatarUrl = string.IsNullOrWhiteSpace(user.ProfileImageUrl) ? null : user.ProfileImageUrl
+        };
+
+        private async Task<(AppUser? User, ResponseVM? Error)> FindByTokenAsync(string token, string email, string purpose)
+        {
+            var principal = CommonMethods.ValidatePurposeToken(token, purpose, _config, out var expired);
             if (principal == null)
             {
-                response.responseCode = 400;
-                response.responseMessage = "Invalid access token.";
-                return response;
+                return (null, expired
+                    ? ResponseVM.BadRequest(ErrorCodes.TokenExpired, "This link has expired. Ask for a new one.")
+                    : ResponseVM.BadRequest(ErrorCodes.InvalidToken, "This link is not valid."));
             }
 
-            var email = principal.Claims.FirstOrDefault(x => x.Type == "Email")?.Value;
-
-            if (string.IsNullOrEmpty(email))
+            var tokenEmail = principal.FindFirst("Email")?.Value ?? "";
+            if (!string.Equals(tokenEmail, NormaliseEmail(email), StringComparison.OrdinalIgnoreCase)
+                || !long.TryParse(principal.FindFirst("ID")?.Value, out var userId))
             {
-                response.responseCode = 400;
-                response.responseMessage = "Invalid token.";
-                return response;
+                return (null, ResponseVM.BadRequest(ErrorCodes.InvalidToken, "This link is not valid."));
             }
 
-            var user = _context.AppUsers.FirstOrDefault(x =>
-                x.Email == email &&
-                !x.IsDeleted);
-
-            if (user == null)
-            {
-                response.responseCode = 404;
-                response.responseMessage = "User not found.";
-                return response;
-            }
-
-            if (user.RefreshToken != tokenApiModel.RefreshToken)
-            {
-                response.responseCode = 401;
-                response.responseMessage = "Invalid refresh token.";
-                return response;
-            }
-
-            if (user.RefreshTokenExpiryTime <= DateTime.UtcNow)
-            {
-                response.responseCode = 401;
-                response.responseMessage = "Refresh token expired.";
-                return response;
-            }
-
-            var newAccessToken = CommonMethods.GenerateJwtToken(
-                user.Email,
-                user.Id,
-                user.UserName,
-                _config);
-
-            var newRefreshToken = CommonMethods.GenerateRefreshToken();
-
-            user.RefreshToken = newRefreshToken;
-            user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7);
-
-            _context.SaveChanges();
-
-            response.responseCode = 200;
-            response.responseMessage = "Token refreshed successfully.";
-            response.data = new TokenApiModel
-            {
-                AccessToken = newAccessToken,
-                RefreshToken = newRefreshToken
-            };
-
-            return response;
+            var user = await _context.AppUsers.FirstOrDefaultAsync(x => x.Id == userId && x.Email == tokenEmail && !x.IsDeleted);
+            return user == null
+                ? (null, ResponseVM.NotFound("We could not find that account.", ErrorCodes.UserNotFound))
+                : (user, null);
         }
-        private void SendVerifyEmail(string verifyToken, string email)
+
+        private async Task SendVerifyEmailAsync(AppUser user)
         {
-            string subject = "Codify - Verify your account";
-            string link = _config["EmailLinks:VerifyLink"];
-            string verifyLink = link.TrimEnd('/') + WebUtility.UrlEncode(verifyToken);
-
-            string webRootPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
-            string filePath = Path.Combine(webRootPath, "emailTemplates", "verifyEmail.html");
-
-            string body = System.IO.File.ReadAllText(filePath);
-            body = body.Replace("{{VERIFY_LINK}}", verifyLink);
-
-            CommonMethods.SendEmail(email, subject, body, _config);
+            var token = CommonMethods.GeneratePurposeToken(user.Id, user.Email, VerifyPurpose, VerifyLifetime, _config);
+            var link = FrontendLink("verify-email", user.Email, token);
+            await SendTemplateAsync(user.Email, "Coddify - Verify your account", "verifyEmail.html", "{{VERIFY_LINK}}", link);
         }
-        private void SendResendVerifyEmail(string verifyToken, string email)
+
+        private async Task SendResetEmailAsync(AppUser user)
         {
-            string subject = "Codify - Reset your password";
-            string link = _config["EmailLinks:ResetLink"];
-            string verifyLink = link.TrimEnd('/') + WebUtility.UrlEncode(verifyToken);
-
-            string webRootPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
-            string filePath = Path.Combine(webRootPath, "emailTemplates", "resetEmail.html");
-
-            string body = System.IO.File.ReadAllText(filePath);
-            body = body.Replace("{{RESET_LINK}}", verifyLink);
-
-            CommonMethods.SendEmail(email, subject, body, _config);
+            var token = CommonMethods.GeneratePurposeToken(user.Id, user.Email, ResetPurpose, ResetLifetime, _config);
+            var link = FrontendLink("reset-password", user.Email, token);
+            await SendTemplateAsync(user.Email, "Coddify - Reset your password", "resetEmail.html", "{{RESET_LINK}}", link);
         }
+
+        /// <summary>Email links open the Angular app, which calls the API with the token.</summary>
+        private string FrontendLink(string page, string email, string token)
+        {
+            var baseUrl = (_config["App:FrontendUrl"] ?? "http://localhost:4200").TrimEnd('/');
+            return $"{baseUrl}/{page}?email={WebUtility.UrlEncode(email)}&token={WebUtility.UrlEncode(token)}";
+        }
+
+        private async Task SendTemplateAsync(string to, string subject, string template, string placeholder, string link)
+        {
+            var path = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "emailTemplates", template);
+            var body = File.Exists(path)
+                ? (await File.ReadAllTextAsync(path)).Replace(placeholder, link)
+                : $"<p><a href=\"{link}\">{link}</a></p>";
+
+            var result = await CommonMethods.SendEmail(to, subject, body, _config);
+            if (result != "mail sent successfully")
+            {
+                // Without SMTP (local development) the link is still usable from the log.
+                _logger.LogWarning("Email to {Email} not sent ({Result}). Link: {Link}", to, result, link);
+            }
+        }
+
+        private async Task<string> UniqueUsernameAsync(string fullName, string email)
+        {
+            var source = string.IsNullOrWhiteSpace(fullName) ? email.Split('@')[0] : fullName;
+            var baseName = Regex.Replace(source.ToLowerInvariant(), "[^a-z0-9]", "");
+            if (baseName.Length < 3)
+            {
+                baseName = "coder";
+            }
+            baseName = baseName.Length > 16 ? baseName[..16] : baseName;
+
+            var username = baseName;
+            var counter = 1;
+            while (await _context.AppUsers.AnyAsync(x => x.UserName == username && !x.IsDeleted))
+            {
+                username = $"{baseName}{counter++}";
+            }
+            return username;
+        }
+
+        private static string NormaliseEmail(string email) => email.Trim().ToLowerInvariant();
+
+        private static string HashRefreshToken(string token) =>
+            Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(token)));
     }
-    
 }
