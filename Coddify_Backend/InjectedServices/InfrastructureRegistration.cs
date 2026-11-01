@@ -5,6 +5,8 @@ using Application.Interfaces.Gamification;
 using Application.Interfaces.Learning;
 using Application.Interfaces.Onboarding;
 using Application.Interfaces.Practice;
+using Application.Interfaces.Tutor;
+using Infrastructure.Services.Tutor;
 using Infrastructure.Services.Practice;
 using Infrastructure.Services.Social;
 using Coddify_Backend.Hubs;
@@ -57,6 +59,9 @@ namespace Coddify_Backend.InjectedServices
             // Practice (TemporaryProblemJudge is swapped for Judge0 once it is hosted)
             services.AddSingleton<IProblemJudge, TemporaryProblemJudge>();
             services.AddScoped<IPracticeService, PracticeService>();
+
+            // AI tutor (Claude when AI:ApiKey is set, built-in hints otherwise)
+            services.AddScoped<ITutorService, TutorService>();
 
             return services;
         }
