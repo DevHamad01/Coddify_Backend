@@ -201,8 +201,11 @@ namespace Infrastructure.Services.Tutor
                     ? string.Join("\n", st.EnumerateArray().Select(x => x.GetString()))
                     : "";
                 var language = detail.TryGetProperty("defaultLanguage", out var dl) ? dl.GetString() ?? "python" : "python";
+                var hints = detail.TryGetProperty("hints", out var h) && h.ValueKind == JsonValueKind.Array
+                    ? h.EnumerateArray().Select(x => x.GetString() ?? "").Where(x => x.Length > 0).ToList()
+                    : new List<string>();
                 return new TutorContext(
-                    "problem", problem.Title, language, statement, statement, new List<string>(),
+                    "problem", problem.Title, language, statement, statement, hints,
                     problem.Tests.Where(t => !t.IsHidden).OrderBy(t => t.Order).Take(3).Select(t => $"{t.Args} -> {t.Expected}").ToList());
             }
 
@@ -223,6 +226,10 @@ namespace Infrastructure.Services.Tutor
             var question = request.Message.ToLowerInvariant();
             var run = request.LastRun;
 
+            if (context.Kind == "problem" && question.Contains("hint") && context.Steps.Count > 0)
+            {
+                return $"Here's a nudge: {context.Steps[0]}\n\nStill stuck? Open the **Hints** tab for the next one.";
+            }
             if (question.Contains("explain") && context.Steps.Count > 0)
             {
                 var steps = string.Join("\n", context.Steps.Select((step, i) => $"{i + 1}. {step}"));
