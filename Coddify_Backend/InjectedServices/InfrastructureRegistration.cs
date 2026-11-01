@@ -1,3 +1,4 @@
+using Application.Interfaces.Admin;
 using Application.Interfaces.AppUsers;
 using Application.Interfaces.CodeExecution;
 using Application.Interfaces.Common;
@@ -6,6 +7,7 @@ using Application.Interfaces.Learning;
 using Application.Interfaces.Onboarding;
 using Application.Interfaces.Practice;
 using Application.Interfaces.Tutor;
+using Infrastructure.Services.Admin;
 using Infrastructure.Services.Tutor;
 using Infrastructure.Services.Practice;
 using Infrastructure.Services.Social;
@@ -62,6 +64,9 @@ namespace Coddify_Backend.InjectedServices
 
             // AI tutor (Claude when AI:ApiKey is set, built-in hints otherwise)
             services.AddScoped<ITutorService, TutorService>();
+
+            // Admin content authoring
+            services.AddScoped<IAdminContentService, AdminContentService>();
 
             return services;
         }
