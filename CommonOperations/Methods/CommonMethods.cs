@@ -52,27 +52,87 @@ namespace CommonOperations.Methods
             var plainTextBytes = System.Text.Encoding.UTF8.GetBytes(password);
             return System.Convert.ToBase64String(plainTextBytes);
         }
+        /// <summary>Access token lifetime in minutes (JWT:AccessTokenMinutes, default 60).</summary>
+        public static int AccessTokenMinutes(IConfiguration config) =>
+            int.TryParse(config["JWT:AccessTokenMinutes"], out var minutes) ? minutes : 60;
+
         public static string GenerateJwtToken(
          string UserEmail,
          long UserID,
          string UserName,
-         IConfiguration config)
+         IConfiguration config,
+         string role = Constants.Common.Roles.Learner)
         {
             var authClaims = new List<Claim>
     {
         new Claim("Email", UserEmail),
         new Claim("ID", UserID.ToString()),
-        new Claim("UserName", UserName)
+        new Claim("UserName", UserName),
+        new Claim(ClaimTypes.Role, role),
+        new Claim("purpose", "access")
     };
 
+            return WriteToken(authClaims, DateTime.UtcNow.AddMinutes(AccessTokenMinutes(config)), config);
+        }
+
+        /// <summary>
+        /// Short-lived signed token for email links ("verify" or "reset"). Unlike the old flow it is
+        /// validated (signature, issuer, audience, expiry and purpose) before it is trusted.
+        /// </summary>
+        public static string GeneratePurposeToken(long userId, string email, string purpose, TimeSpan lifetime, IConfiguration config)
+        {
+            var claims = new List<Claim>
+            {
+                new Claim("ID", userId.ToString()),
+                new Claim("Email", email),
+                new Claim("purpose", purpose)
+            };
+            return WriteToken(claims, DateTime.UtcNow.Add(lifetime), config);
+        }
+
+        /// <summary>Returns the token's claims when it is valid and made for <paramref name="purpose"/>, else null.</summary>
+        public static ClaimsPrincipal? ValidatePurposeToken(string token, string purpose, IConfiguration config, out bool expired)
+        {
+            expired = false;
+            try
+            {
+                var principal = new JwtSecurityTokenHandler().ValidateToken(token, ValidationParameters(config, validateLifetime: true), out _);
+                return principal.FindFirst("purpose")?.Value == purpose ? principal : null;
+            }
+            catch (SecurityTokenExpiredException)
+            {
+                expired = true;
+                return null;
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+        }
+
+        public static TokenValidationParameters ValidationParameters(IConfiguration config, bool validateLifetime) => new()
+        {
+            ValidateIssuer = true,
+            ValidIssuer = config["JWT:ValidIssuer"],
+            ValidateAudience = true,
+            ValidAudience = config["JWT:ValidAudience"],
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(config["JWT:Secret"]!)),
+            ValidateLifetime = validateLifetime,
+            ClockSkew = TimeSpan.FromMinutes(1),
+            RoleClaimType = ClaimTypes.Role
+        };
+
+        private static string WriteToken(IEnumerable<Claim> claims, DateTime expires, IConfiguration config)
+        {
             var authSigningKey = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(config["JWT:Secret"]));
+                Encoding.UTF8.GetBytes(config["JWT:Secret"]!));
 
             var token = new JwtSecurityToken(
                 issuer: config["JWT:ValidIssuer"],
                 audience: config["JWT:ValidAudience"],
-                expires: DateTime.UtcNow.AddMinutes(60),
-                claims: authClaims,
+                expires: expires,
+                claims: claims,
                 signingCredentials: new SigningCredentials(
                     authSigningKey,
                     SecurityAlgorithms.HmacSha256));
@@ -90,14 +150,8 @@ namespace CommonOperations.Methods
 
         public static ClaimsPrincipal? GetPrincipalFromExpiredToken(string? token, IConfiguration config)
         {
-            var tokenValidationParameters = new TokenValidationParameters
-            {
-                ValidateAudience = false,
-                ValidateIssuer = false,
-                ValidateIssuerSigningKey = true,
-                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(config["JWT:Secret"])),
-                ValidateLifetime = false // Here we are saying that we don't care about the token's expiration date
-            };
+            // The access token may be expired here; everything else (signature, issuer, audience) must hold.
+            var tokenValidationParameters = ValidationParameters(config, validateLifetime: false);
 
             var tokenHandler = new JwtSecurityTokenHandler();
             var principal = tokenHandler.ValidateToken(token, tokenValidationParameters, out SecurityToken securityToken);
@@ -137,12 +191,17 @@ namespace CommonOperations.Methods
 
 
 
-            using (SmtpClient client = new SmtpClient(smtpSettings["Server"], int.Parse(smtpSettings["Port"])))
+            if (string.IsNullOrWhiteSpace(smtpSettings["SenderEmail"]) || string.IsNullOrWhiteSpace(smtpSettings["Password"]))
+            {
+                return "smtp not configured";
+            }
+
+            using (SmtpClient client = new SmtpClient(smtpSettings["Server"], int.Parse(smtpSettings["Port"] ?? "587")))
             {
                 client.UseDefaultCredentials = false;
                 client.Credentials = new NetworkCredential(smtpSettings["SenderEmail"], smtpSettings["Password"]);
-                MailMessage mailMessage = new MailMessage();
-                mailMessage.From = new MailAddress(smtpSettings["SenderEmail"]);
+                using MailMessage mailMessage = new MailMessage();
+                mailMessage.From = new MailAddress(smtpSettings["SenderEmail"]!, "Coddify");
                 mailMessage.To.Add(userEmail);
                 mailMessage.Subject = subject;
                 mailMessage.Body = body;
@@ -150,7 +209,7 @@ namespace CommonOperations.Methods
                 try
                 {
                     client.EnableSsl = true;
-                    client.Send(mailMessage);
+                    await client.SendMailAsync(mailMessage);
                     response = "mail sent successfully";
                 }
                 catch (Exception ex)
