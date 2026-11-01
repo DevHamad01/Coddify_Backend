@@ -1,0 +1,761 @@
+{
+  "items": [
+    {
+      "id": "theme-coddify",
+      "tab": "themes",
+      "kind": "theme",
+      "name": "Coddify Dark",
+      "description": "The classic near-black editor.",
+      "unlock": null,
+      "rarity": "common",
+      "art": "coddify"
+    },
+    {
+      "id": "theme-midnight",
+      "tab": "themes",
+      "kind": "theme",
+      "name": "Midnight",
+      "description": "Deep navy with soft violet keywords.",
+      "unlock": {
+        "metric": "level",
+        "target": 2
+      },
+      "rarity": "common",
+      "art": "midnight"
+    },
+    {
+      "id": "theme-ocean",
+      "tab": "themes",
+      "kind": "theme",
+      "name": "Ocean",
+      "description": "Calm blues and sea-green strings.",
+      "unlock": {
+        "metric": "lessons",
+        "target": 5
+      },
+      "rarity": "common",
+      "art": "ocean"
+    },
+    {
+      "id": "theme-forest",
+      "tab": "themes",
+      "kind": "theme",
+      "name": "Forest",
+      "description": "Mossy greens for long, focused sessions.",
+      "unlock": {
+        "metric": "streak",
+        "target": 3
+      },
+      "rarity": "rare",
+      "art": "forest"
+    },
+    {
+      "id": "theme-sunset",
+      "tab": "themes",
+      "kind": "theme",
+      "name": "Sunset",
+      "description": "Warm oranges and pinks on dark plum.",
+      "unlock": {
+        "metric": "xp",
+        "target": 500
+      },
+      "rarity": "rare",
+      "art": "sunset"
+    },
+    {
+      "id": "theme-neon",
+      "tab": "themes",
+      "kind": "theme",
+      "name": "Neon Night",
+      "description": "Electric pink and cyan on pure black.",
+      "unlock": {
+        "metric": "solved",
+        "target": 5
+      },
+      "rarity": "rare",
+      "art": "neon"
+    },
+    {
+      "id": "theme-vampire",
+      "tab": "themes",
+      "kind": "theme",
+      "name": "Vampire",
+      "description": "A dark purple classic with bright accents.",
+      "unlock": {
+        "metric": "level",
+        "target": 5
+      },
+      "rarity": "legendary",
+      "art": "vampire"
+    },
+    {
+      "id": "theme-solar",
+      "tab": "themes",
+      "kind": "theme",
+      "name": "Solar Flare",
+      "description": "Gold and amber that burn bright.",
+      "unlock": {
+        "metric": "streak",
+        "target": 7
+      },
+      "rarity": "legendary",
+      "art": "solar"
+    },
+    {
+      "id": "tutor-bit",
+      "tab": "tutors",
+      "kind": "tutor",
+      "name": "Bit",
+      "description": "The original Coddify robot. Calm, patient, always nudging.",
+      "unlock": null,
+      "rarity": "common",
+      "art": "bit"
+    },
+    {
+      "id": "tutor-nova",
+      "tab": "tutors",
+      "kind": "tutor",
+      "name": "Nova",
+      "description": "Cheerful and quick, celebrates every small win.",
+      "unlock": {
+        "metric": "lessons",
+        "target": 3
+      },
+      "rarity": "common",
+      "art": "nova"
+    },
+    {
+      "id": "tutor-byte",
+      "tab": "tutors",
+      "kind": "tutor",
+      "name": "Byte",
+      "description": "Cool and to the point. Short hints, no fluff.",
+      "unlock": {
+        "metric": "xp",
+        "target": 200
+      },
+      "rarity": "common",
+      "art": "byte"
+    },
+    {
+      "id": "tutor-pixel",
+      "tab": "tutors",
+      "kind": "tutor",
+      "name": "Pixel",
+      "description": "Explains everything with games and pictures.",
+      "unlock": {
+        "metric": "streak",
+        "target": 3
+      },
+      "rarity": "rare",
+      "art": "pixel"
+    },
+    {
+      "id": "tutor-sage",
+      "tab": "tutors",
+      "kind": "tutor",
+      "name": "Sage",
+      "description": "Thoughtful, asks the question that unlocks the answer.",
+      "unlock": {
+        "metric": "solved",
+        "target": 3
+      },
+      "rarity": "rare",
+      "art": "sage"
+    },
+    {
+      "id": "tutor-ada",
+      "tab": "tutors",
+      "kind": "tutor",
+      "name": "Professor Ada",
+      "description": "PhD in algorithms. Loves a good proof.",
+      "unlock": {
+        "metric": "level",
+        "target": 4
+      },
+      "rarity": "legendary",
+      "art": "ada"
+    },
+    {
+      "id": "tutor-luna",
+      "tab": "tutors",
+      "kind": "tutor",
+      "name": "Luna",
+      "description": "Night-owl tutor with a soft spot for recursion.",
+      "unlock": {
+        "metric": "xp",
+        "target": 800
+      },
+      "rarity": "legendary",
+      "art": "luna"
+    },
+    {
+      "id": "tutor-max",
+      "tab": "tutors",
+      "kind": "tutor",
+      "name": "Max",
+      "description": "Hype coach in golden headphones. Never lets you quit.",
+      "unlock": {
+        "metric": "level",
+        "target": 8
+      },
+      "rarity": "legendary",
+      "art": "max"
+    },
+    {
+      "id": "bit-apprentice",
+      "tab": "profile",
+      "kind": "title",
+      "name": "Bit's Apprentice",
+      "description": "Everyone starts here.",
+      "unlock": null,
+      "rarity": "common",
+      "art": "robot"
+    },
+    {
+      "id": "bug-hunter",
+      "tab": "profile",
+      "kind": "title",
+      "name": "Bug Hunter",
+      "description": "Solved your first problem.",
+      "unlock": {
+        "metric": "solved",
+        "target": 1
+      },
+      "rarity": "common",
+      "art": "search"
+    },
+    {
+      "id": "code-crusader",
+      "tab": "profile",
+      "kind": "title",
+      "name": "Code Crusader",
+      "description": "Finished your first lesson.",
+      "unlock": {
+        "metric": "lessons",
+        "target": 1
+      },
+      "rarity": "common",
+      "art": "code"
+    },
+    {
+      "id": "loop-legend",
+      "tab": "profile",
+      "kind": "title",
+      "name": "Loop Legend",
+      "description": "Five lessons done and counting.",
+      "unlock": {
+        "metric": "lessons",
+        "target": 5
+      },
+      "rarity": "common",
+      "art": "infinity"
+    },
+    {
+      "id": "night-owl",
+      "tab": "profile",
+      "kind": "title",
+      "name": "Night Owl",
+      "description": "Collected your first 300 XP.",
+      "unlock": {
+        "metric": "xp",
+        "target": 300
+      },
+      "rarity": "common",
+      "art": "moon"
+    },
+    {
+      "id": "byte-master",
+      "tab": "profile",
+      "kind": "title",
+      "name": "Byte Master",
+      "description": "Reached level 3.",
+      "unlock": {
+        "metric": "level",
+        "target": 3
+      },
+      "rarity": "rare",
+      "art": "braces"
+    },
+    {
+      "id": "motivator",
+      "tab": "profile",
+      "kind": "title",
+      "name": "Motivator",
+      "description": "Kept a 7 day streak.",
+      "unlock": {
+        "metric": "streak",
+        "target": 7
+      },
+      "rarity": "rare",
+      "art": "flame"
+    },
+    {
+      "id": "algorithm-architect",
+      "tab": "profile",
+      "kind": "title",
+      "name": "Algorithm Architect",
+      "description": "Solved 10 problems.",
+      "unlock": {
+        "metric": "solved",
+        "target": 10
+      },
+      "rarity": "rare",
+      "art": "git-branch"
+    },
+    {
+      "id": "merge-maestro",
+      "tab": "profile",
+      "kind": "title",
+      "name": "Merge Maestro",
+      "description": "Completed 30 lessons.",
+      "unlock": {
+        "metric": "lessons",
+        "target": 30
+      },
+      "rarity": "rare",
+      "art": "layers"
+    },
+    {
+      "id": "coddify-innovator",
+      "tab": "profile",
+      "kind": "title",
+      "name": "Coddify Innovator",
+      "description": "Earned 1,500 XP.",
+      "unlock": {
+        "metric": "xp",
+        "target": 1500
+      },
+      "rarity": "rare",
+      "art": "sparkles"
+    },
+    {
+      "id": "commit-crafter",
+      "tab": "profile",
+      "kind": "title",
+      "name": "Commit Crafter",
+      "description": "Kept a 14 day streak.",
+      "unlock": {
+        "metric": "streak",
+        "target": 14
+      },
+      "rarity": "legendary",
+      "art": "git-branch"
+    },
+    {
+      "id": "null-pointer-pro",
+      "tab": "profile",
+      "kind": "title",
+      "name": "Null Pointer Pro",
+      "description": "Solved 25 problems.",
+      "unlock": {
+        "metric": "solved",
+        "target": 25
+      },
+      "rarity": "legendary",
+      "art": "target"
+    },
+    {
+      "id": "code-oracle",
+      "tab": "profile",
+      "kind": "title",
+      "name": "Code Oracle",
+      "description": "Reached level 10.",
+      "unlock": {
+        "metric": "level",
+        "target": 10
+      },
+      "rarity": "legendary",
+      "art": "eye"
+    },
+    {
+      "id": "quantum-coder",
+      "tab": "profile",
+      "kind": "title",
+      "name": "Quantum Coder",
+      "description": "Earned 3,000 XP.",
+      "unlock": {
+        "metric": "xp",
+        "target": 3000
+      },
+      "rarity": "legendary",
+      "art": "globe"
+    },
+    {
+      "id": "recursion-ranger",
+      "tab": "profile",
+      "kind": "title",
+      "name": "Recursion Ranger",
+      "description": "Solved 50 problems.",
+      "unlock": {
+        "metric": "solved",
+        "target": 50
+      },
+      "rarity": "legendary",
+      "art": "refresh"
+    },
+    {
+      "id": "frame-none",
+      "tab": "profile",
+      "kind": "frame",
+      "name": "No Frame",
+      "description": "Clean avatar with no extra frame.",
+      "unlock": null,
+      "rarity": "common",
+      "art": "none"
+    },
+    {
+      "id": "frame-copper",
+      "tab": "profile",
+      "kind": "frame",
+      "name": "Copper Ring",
+      "description": "A warm copper border around your avatar.",
+      "unlock": {
+        "metric": "xp",
+        "target": 100
+      },
+      "rarity": "common",
+      "art": "copper"
+    },
+    {
+      "id": "frame-silver",
+      "tab": "profile",
+      "kind": "frame",
+      "name": "Silver Ring",
+      "description": "Polished silver frame for your profile.",
+      "unlock": {
+        "metric": "xp",
+        "target": 300
+      },
+      "rarity": "common",
+      "art": "silver"
+    },
+    {
+      "id": "frame-teal",
+      "tab": "profile",
+      "kind": "frame",
+      "name": "Coddify Teal",
+      "description": "Official Coddify teal ring.",
+      "unlock": {
+        "metric": "lessons",
+        "target": 3
+      },
+      "rarity": "common",
+      "art": "teal"
+    },
+    {
+      "id": "frame-emerald",
+      "tab": "profile",
+      "kind": "frame",
+      "name": "Emerald Ring",
+      "description": "A vivid emerald border.",
+      "unlock": {
+        "metric": "streak",
+        "target": 3
+      },
+      "rarity": "rare",
+      "art": "emerald"
+    },
+    {
+      "id": "frame-violet",
+      "tab": "profile",
+      "kind": "frame",
+      "name": "Violet Glow",
+      "description": "A violet ring with a soft glow.",
+      "unlock": {
+        "metric": "level",
+        "target": 3
+      },
+      "rarity": "rare",
+      "art": "violet"
+    },
+    {
+      "id": "frame-ember",
+      "tab": "profile",
+      "kind": "frame",
+      "name": "Ember Pulse",
+      "description": "A living ember ring that pulses with heat.",
+      "unlock": {
+        "metric": "streak",
+        "target": 7
+      },
+      "rarity": "rare",
+      "art": "ember"
+    },
+    {
+      "id": "frame-circuit",
+      "tab": "profile",
+      "kind": "frame",
+      "name": "Neon Circuit",
+      "description": "Glowing circuit-style border.",
+      "unlock": {
+        "metric": "solved",
+        "target": 5
+      },
+      "rarity": "rare",
+      "art": "circuit"
+    },
+    {
+      "id": "frame-gold",
+      "tab": "profile",
+      "kind": "frame",
+      "name": "Gold Laurel",
+      "description": "Champion gold frame for your profile.",
+      "unlock": {
+        "metric": "level",
+        "target": 6
+      },
+      "rarity": "legendary",
+      "art": "gold"
+    },
+    {
+      "id": "frame-diamond",
+      "tab": "profile",
+      "kind": "frame",
+      "name": "Diamond Halo",
+      "description": "A shimmering ring with an icy sparkle.",
+      "unlock": {
+        "metric": "xp",
+        "target": 2000
+      },
+      "rarity": "legendary",
+      "art": "diamond"
+    },
+    {
+      "id": "frame-prism",
+      "tab": "profile",
+      "kind": "frame",
+      "name": "Prism Ring",
+      "description": "A spinning ring of rainbow light.",
+      "unlock": {
+        "metric": "level",
+        "target": 10
+      },
+      "rarity": "legendary",
+      "art": "prism"
+    },
+    {
+      "id": "frame-aurora",
+      "tab": "profile",
+      "kind": "frame",
+      "name": "Aurora",
+      "description": "Northern lights in teal, violet and pink, always moving.",
+      "unlock": {
+        "metric": "streak",
+        "target": 30
+      },
+      "rarity": "legendary",
+      "art": "aurora"
+    },
+    {
+      "id": "name-plain",
+      "tab": "profile",
+      "kind": "name-effect",
+      "name": "Plain",
+      "description": "Your name, no effect.",
+      "unlock": null,
+      "rarity": "common",
+      "art": "plain"
+    },
+    {
+      "id": "name-teal-glow",
+      "tab": "profile",
+      "kind": "name-effect",
+      "name": "Teal Glow",
+      "description": "A soft Coddify glow.",
+      "unlock": {
+        "metric": "xp",
+        "target": 150
+      },
+      "rarity": "common",
+      "art": "teal-glow"
+    },
+    {
+      "id": "name-ocean",
+      "tab": "profile",
+      "kind": "name-effect",
+      "name": "Ocean Gradient",
+      "description": "Blue to sea-green.",
+      "unlock": {
+        "metric": "streak",
+        "target": 3
+      },
+      "rarity": "common",
+      "art": "ocean"
+    },
+    {
+      "id": "name-sunset",
+      "tab": "profile",
+      "kind": "name-effect",
+      "name": "Sunset Gradient",
+      "description": "Orange fading into pink.",
+      "unlock": {
+        "metric": "lessons",
+        "target": 5
+      },
+      "rarity": "rare",
+      "art": "sunset"
+    },
+    {
+      "id": "name-neon",
+      "tab": "profile",
+      "kind": "name-effect",
+      "name": "Neon Sign",
+      "description": "Buzzing pink neon.",
+      "unlock": {
+        "metric": "solved",
+        "target": 5
+      },
+      "rarity": "rare",
+      "art": "neon"
+    },
+    {
+      "id": "name-gold",
+      "tab": "profile",
+      "kind": "name-effect",
+      "name": "Gold Shine",
+      "description": "A gold sheen sweeps across your name.",
+      "unlock": {
+        "metric": "level",
+        "target": 5
+      },
+      "rarity": "legendary",
+      "art": "gold"
+    },
+    {
+      "id": "name-rainbow",
+      "tab": "profile",
+      "kind": "name-effect",
+      "name": "Rainbow Shimmer",
+      "description": "Every colour, always moving.",
+      "unlock": {
+        "metric": "level",
+        "target": 8
+      },
+      "rarity": "legendary",
+      "art": "rainbow"
+    },
+    {
+      "id": "name-fire",
+      "tab": "profile",
+      "kind": "name-effect",
+      "name": "On Fire",
+      "description": "Flames lick at every letter.",
+      "unlock": {
+        "metric": "streak",
+        "target": 14
+      },
+      "rarity": "legendary",
+      "art": "fire"
+    },
+    {
+      "id": "flame-classic",
+      "tab": "profile",
+      "kind": "streak-flame",
+      "name": "Classic",
+      "description": "The orange flame everyone starts with.",
+      "unlock": null,
+      "rarity": "common",
+      "art": "classic"
+    },
+    {
+      "id": "flame-blue",
+      "tab": "profile",
+      "kind": "streak-flame",
+      "name": "Blue Flame",
+      "description": "Hotter than it looks.",
+      "unlock": {
+        "metric": "streak",
+        "target": 3
+      },
+      "rarity": "common",
+      "art": "blue"
+    },
+    {
+      "id": "flame-green",
+      "tab": "profile",
+      "kind": "streak-flame",
+      "name": "Toxic Green",
+      "description": "A flame with a bit of mischief.",
+      "unlock": {
+        "metric": "streak",
+        "target": 5
+      },
+      "rarity": "common",
+      "art": "green"
+    },
+    {
+      "id": "flame-purple",
+      "tab": "profile",
+      "kind": "streak-flame",
+      "name": "Purple Haze",
+      "description": "For the night-time coders.",
+      "unlock": {
+        "metric": "streak",
+        "target": 7
+      },
+      "rarity": "rare",
+      "art": "purple"
+    },
+    {
+      "id": "flame-pink",
+      "tab": "profile",
+      "kind": "streak-flame",
+      "name": "Pink Blaze",
+      "description": "Bright, bold and impossible to miss.",
+      "unlock": {
+        "metric": "lessons",
+        "target": 10
+      },
+      "rarity": "rare",
+      "art": "pink"
+    },
+    {
+      "id": "flame-white",
+      "tab": "profile",
+      "kind": "streak-flame",
+      "name": "White Hot",
+      "description": "The hottest flame there is.",
+      "unlock": {
+        "metric": "streak",
+        "target": 14
+      },
+      "rarity": "rare",
+      "art": "white"
+    },
+    {
+      "id": "flame-gold",
+      "tab": "profile",
+      "kind": "streak-flame",
+      "name": "Golden Flame",
+      "description": "Pure gold, for the dedicated.",
+      "unlock": {
+        "metric": "level",
+        "target": 6
+      },
+      "rarity": "legendary",
+      "art": "gold"
+    },
+    {
+      "id": "flame-rainbow",
+      "tab": "profile",
+      "kind": "streak-flame",
+      "name": "Rainbow Fire",
+      "description": "A month of streaks, in every colour.",
+      "unlock": {
+        "metric": "streak",
+        "target": 30
+      },
+      "rarity": "legendary",
+      "art": "rainbow"
+    }
+  ],
+  "defaultEquipped": {
+    "theme": "theme-coddify",
+    "tutor": "tutor-bit",
+    "title": "bit-apprentice",
+    "frame": "frame-none",
+    "name-effect": "name-plain",
+    "streak-flame": "flame-classic"
+  }
+}

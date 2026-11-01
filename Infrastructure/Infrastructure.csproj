@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -26,6 +26,11 @@
     <!-- Microsoft.OpenApi is provided transitively by Microsoft.AspNetCore.OpenApi; do not reference directly to avoid version mismatch with source generators -->
     <PackageReference Include="Microsoft.SqlServer.Server" Version="1.0.0" />
     <PackageReference Include="SQLitePCLRaw.lib.e_sqlite3" Version="3.53.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Starter catalog exported from the frontend mocks; read by Seed/DbSeeder.cs. -->
+    <None Update="Seed\Data\*.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

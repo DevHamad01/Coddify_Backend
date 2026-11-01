@@ -1,0 +1,93 @@
+{
+  "tiers": [
+    {
+      "name": "Kilo",
+      "from": 1,
+      "to": 6
+    },
+    {
+      "name": "Mega",
+      "from": 7,
+      "to": 16
+    },
+    {
+      "name": "Giga",
+      "from": 17,
+      "to": 28
+    },
+    {
+      "name": "Tera",
+      "from": 29,
+      "to": 40
+    },
+    {
+      "name": "Peta",
+      "from": 41,
+      "to": 50
+    }
+  ],
+  "names": [
+    "Hello World",
+    "Memory Blocks",
+    "Underscore",
+    "Clock Cycles",
+    "Breakpoints",
+    "Loading Stripes",
+    "Stack Frames",
+    "Heap Hero",
+    "Bit Shifter",
+    "Bytecode",
+    "Pointer Path",
+    "Cache Hit",
+    "Thread Weaver",
+    "Kernel",
+    "Compiler",
+    "Mega Mind",
+    "Lambda",
+    "Recursion",
+    "Hash Map",
+    "Binary Tree",
+    "Graph Walker",
+    "Dynamic Duo",
+    "Greedy Choice",
+    "Big O",
+    "Refactor",
+    "Unit Tested",
+    "Code Review",
+    "Giga Brain",
+    "Microservice",
+    "Pipeline",
+    "Container",
+    "Orchestrator",
+    "Load Balancer",
+    "Sharding",
+    "Consensus",
+    "Event Loop",
+    "Async Await",
+    "Garbage Collector",
+    "Type System",
+    "Tera Titan",
+    "Quantum Bit",
+    "Neural Net",
+    "Transformer",
+    "Compiler Wizard",
+    "Open Source",
+    "Architect",
+    "Mentor",
+    "Legend",
+    "Hall of Fame",
+    "Peta Master"
+  ],
+  "quotes": [
+    "Coding is the language of builders. Keep writing your story.",
+    "Every expert was once a beginner who refused to quit.",
+    "Bugs are just lessons wearing a disguise.",
+    "Small daily wins compound into big skills.",
+    "Read the error message. It is trying to help you.",
+    "The best way to learn to code is to write code that breaks, then fix it.",
+    "You do not need to be fast. You need to keep going.",
+    "Today’s confusing concept is next month’s obvious one.",
+    "A program that works beats a perfect one you never finish.",
+    "Learning to code is learning to think differently."
+  ]
+}
