@@ -55,6 +55,20 @@ namespace Domian.Entities.AppUsers
         [MaxLength(1500)]
         public string BlockedReason { get; set; } = "";
 
+        /// <summary>Learner or Admin (see CommonOperations Roles).</summary>
+        [Column(TypeName = "NVARCHAR")]
+        [MaxLength(20)]
+        public string Role { get; set; } = "Learner";
+
+        public bool OnboardingCompleted { get; set; } = false;
+
+        /// <summary>Avatar builder choices as JSON (skin, hair, shirt…); null = default look.</summary>
+        public string? AvatarJson { get; set; }
+
+        /// <summary>Profile social links as JSON ({ "github": "https://…" }).</summary>
+        [MaxLength(2000)]
+        public string? SocialsJson { get; set; }
+
         public bool IsEmailVerified { get; set; } = false;
 
         public bool IsBlocked { get; set; } = false;
