@@ -201,7 +201,9 @@ namespace Infrastructure.Services.Practice
 
             var status = await StatusMapAsync(userId);
             var detail = JsonDocument.Parse(problem.DetailJson).RootElement;
-            JsonElement Get(string name) => detail.TryGetProperty(name, out var value) ? value.Clone() : default;
+            // Admin-authored detail may leave fields out; send safe empty values instead.
+            JsonElement Get(string name, string fallback = "[]") =>
+                detail.TryGetProperty(name, out var value) ? value.Clone() : JsonDocument.Parse(fallback).RootElement.Clone();
             string GetString(string name) => detail.TryGetProperty(name, out var value) ? value.GetString() ?? "" : "";
 
             return ResponseVM.Ok(new ProblemDetailVM
@@ -209,18 +211,18 @@ namespace Infrastructure.Services.Practice
                 Id = problem.Key,
                 Title = problem.Title,
                 Difficulty = problem.Difficulty,
-                Topics = Get("topics"),
+                Topics = Get("topics", JsonSerializer.Serialize(new[] { problem.Topic })),
                 Statement = Get("statement"),
                 FunctionName = GetString("functionName"),
                 Params = Get("params"),
-                Returns = Get("returns"),
+                Returns = Get("returns", "{\"type\":\"\",\"description\":\"\"}"),
                 Constraints = Get("constraints"),
                 Examples = Get("examples"),
                 Hints = Get("hints"),
-                Solution = Get("solution"),
+                Solution = Get("solution", "{}"),
                 Languages = Get("languages"),
                 DefaultLanguage = GetString("defaultLanguage"),
-                StarterCode = Get("starterCode"),
+                StarterCode = Get("starterCode", "{}"),
                 Similar = await SimilarAsync(problem),
                 Tests = problem.Tests.Where(x => !x.IsHidden).OrderBy(x => x.Order)
                     .Select(x => new ProblemTestVM { Id = x.Key, Args = x.Args, Expected = x.Expected }).ToList(),
