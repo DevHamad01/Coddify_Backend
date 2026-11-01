@@ -1,10 +1,11 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using Domian.Entities.Common;
 
 namespace Domian.Entities.Practice
 {
     /// <summary>An interview problem or a language challenge, solved in the problem workspace.</summary>
-    public class Problem
+    public class Problem : IPublishable
     {
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]

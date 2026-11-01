@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using Domian.Entities.Common;
 
 namespace Domian.Entities.Gamification
 {
@@ -75,7 +76,7 @@ namespace Domian.Entities.Gamification
     }
 
     /// <summary>A store cosmetic. Unlocked by progress (never bought); admins can add more.</summary>
-    public class CosmeticItem
+    public class CosmeticItem : IPublishable
     {
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]

@@ -1,10 +1,11 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using Domian.Entities.Common;
 
 namespace Domian.Entities.Learning
 {
     /// <summary>A language/technology course ("python"). Admins author it; learners read published ones.</summary>
-    public class Course
+    public class Course : IPublishable
     {
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
@@ -37,7 +38,7 @@ namespace Domian.Entities.Learning
     }
 
     /// <summary>"Section 1 · Fundamentals". Holds the chapters of the journey path.</summary>
-    public class CourseSection
+    public class CourseSection : IPublishable
     {
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
@@ -64,7 +65,7 @@ namespace Domian.Entities.Learning
         public List<Chapter> Chapters { get; set; } = new();
     }
 
-    public class Chapter
+    public class Chapter : IPublishable
     {
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
@@ -88,7 +89,7 @@ namespace Domian.Entities.Learning
     }
 
     /// <summary>One hexagon on the path: lesson, quiz, practice or chapter chest.</summary>
-    public class JourneyNode
+    public class JourneyNode : IPublishable
     {
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
@@ -177,7 +178,7 @@ namespace Domian.Entities.Learning
     }
 
     /// <summary>Short standalone course listed under "More courses in Python".</summary>
-    public class MiniCourse
+    public class MiniCourse : IPublishable
     {
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
@@ -208,7 +209,7 @@ namespace Domian.Entities.Learning
     }
 
     /// <summary>Career path: several courses in the order a job needs them.</summary>
-    public class LearningPath
+    public class LearningPath : IPublishable
     {
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
